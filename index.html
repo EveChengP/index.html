@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>休假天數計算器</title>
+  <style>
+    body {
+      font-family: "Segoe UI", "微軟正黑體", sans-serif;
+      background-color: #f4f8fb;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 500px;
+      margin: 60px auto;
+      background-color: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      padding: 30px 40px;
+    }
+
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 10px;
+      font-weight: bold;
+      color: #34495e;
+    }
+
+    input[type="date"] {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      margin-bottom: 20px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #2980b9;
+    }
+
+    h2 {
+      margin-top: 30px;
+      color: #2c3e50;
+    }
+
+    #result {
+      background-color: #ecf6ff;
+      padding: 15px 20px;
+      border-left: 5px solid #3498db;
+      border-radius: 6px;
+      font-size: 16px;
+      color: #2c3e50;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>休假天數計算器</h1>
+
+    <label for="startDate">輸入到職日（yyyy-mm-dd）：</label>
+    <input type="date" id="startDate">
+    <button onclick="calculateLeave()">計算</button>
+
+    <h2>計算結果</h2>
+    <p id="result">請輸入到職日並點選「計算」。</p>
+  </div>
+
+  <script>
+    // 固定國定假日
+    const fixedHolidays = [
+      '2025-01-01', '2025-02-28', '2025-04-04',
+      '2025-04-05', '2025-06-06', '2025-09-08', '2025-10-10'
+    ];
+
+    const extraAnnualHolidays = ['09-28', '10-25', '12-25'];
+
+    const cycleStart = new Date('2025-09-30');
+    const cycleLength = 28;
+
+    function parseYMD(dateStr) {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      return new Date(y, m - 1, d); // JS 月份從 0 開始
+    }
+
+    function formatYMD(date) {
+      return date.toISOString().slice(0, 10);
+    }
+
+    function calculateLeave() {
+      const startDateStr = document.getElementById('startDate').value;
+      const resultElement = document.getElementById('result');
+
+      if (!startDateStr) {
+        resultElement.innerText = '請輸入到職日';
+        return;
+      }
+
+      const onboardDate = parseYMD(startDateStr);
+
+      let cycleStartDate = new Date(cycleStart);
+      let cycleEndDate = new Date(cycleStart);
+      cycleEndDate.setDate(cycleEndDate.getDate() + cycleLength - 1);
+
+      while (onboardDate > cycleEndDate) {
+        cycleStartDate.setDate(cycleStartDate.getDate() + cycleLength);
+        cycleEndDate.setDate(cycleEndDate.getDate() + cycleLength);
+      }
+
+      if (onboardDate > cycleEndDate) {
+        resultElement.innerText = '到職日不在任何有效週期內';
+        return;
+      }
+
+      const oneDay = 1000 * 60 * 60 * 24;
+      const daysWorked = Math.ceil((cycleEndDate - onboardDate) / oneDay) + 1;
+      const normalLeave = Math.round((8 / cycleLength) * daysWorked);
+
+      const holidays = [];
+
+      // 固定假日
+      for (let dateStr of fixedHolidays) {
+        const d = parseYMD(dateStr);
+        if (d >= onboardDate && d <= cycleEndDate) {
+          holidays.push(dateStr);
+        }
+      }
+
+      // 每年新增假日
+      const startYear = cycleStartDate.getFullYear();
+      const endYear = cycleEndDate.getFullYear();
+
+      for (let year = startYear; year <= endYear; year++) {
+        for (let md of extraAnnualHolidays) {
+          const dateStr = `${year}-${md}`;
+          const d = parseYMD(dateStr);
+          if (d >= onboardDate && d <= cycleEndDate) {
+            holidays.push(dateStr);
+          }
+        }
+      }
+
+      const holidayCount = holidays.length;
+      const totalLeave = normalLeave + holidayCount;
+
+      resultElement.innerHTML = `
+        <strong>週期：</strong> ${formatYMD(cycleStartDate)} ～ ${formatYMD(cycleEndDate)}<br>
+        <strong>一般休假：</strong> ${normalLeave} 天<br>
+        <strong>國定假日：</strong> ${holidayCount} 天<br>
+        <strong>合計可休：</strong> ${totalLeave} 天
+      `;
+    }
+  </script>
+</body>
+</html>
