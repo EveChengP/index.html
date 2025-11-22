@@ -93,8 +93,10 @@
       '2025-04-05', '2025-06-06', '2025-09-08', '2025-10-10'
     ];
 
+    // 額外年度假日
     const extraAnnualHolidays = ['09-28', '10-25', '12-25'];
 
+    // 週期設定
     const cycleStart = new Date('2025-09-30');
     const cycleLength = 28;
 
@@ -118,6 +120,7 @@
 
       const onboardDate = parseYMD(startDateStr);
 
+      // 找出到職日所屬週期
       let cycleStartDate = new Date(cycleStart);
       let cycleEndDate = new Date(cycleStart);
       cycleEndDate.setDate(cycleEndDate.getDate() + cycleLength - 1);
@@ -127,14 +130,18 @@
         cycleEndDate.setDate(cycleEndDate.getDate() + cycleLength);
       }
 
-      if (onboardDate > cycleEndDate) {
-        resultElement.innerText = '到職日不在任何有效週期內';
-        return;
-      }
-
+      // 修正 daysWorked：包含開始日與結束日
       const oneDay = 1000 * 60 * 60 * 24;
-      const daysWorked = Math.ceil((cycleEndDate - onboardDate) / oneDay) + 1;
-      const normalLeave = Math.round((8 / cycleLength) * daysWorked);
+      const daysWorked = Math.floor((cycleEndDate - onboardDate) / oneDay) + 1;
+
+      // 一般休假（按比例 8 / 28）
+      let rawLeave = (8 / cycleLength) * daysWorked;
+      let decimal = rawLeave % 1;
+
+      // 小於 0.5 → 捨去；大於等於 0.5 → 進位
+      let normalLeave = (decimal >= 0.5)
+        ? Math.floor(rawLeave) + 1
+        : Math.floor(rawLeave);
 
       const holidays = [];
 
@@ -167,7 +174,11 @@
         <strong>週期：</strong> ${formatYMD(cycleStartDate)} ～ ${formatYMD(cycleEndDate)}<br>
         <strong>一般休假：</strong> ${normalLeave} 天<br>
         <strong>國定假日：</strong> ${holidayCount} 天<br>
-        <strong>合計可休：</strong> ${totalLeave} 天
+        <strong>合計可休：</strong> ${totalLeave} 天<br>
+        <br>
+        <small style="color:#555;">
+        (原始比例計算值：${rawLeave.toFixed(4)} 天，共工作 ${daysWorked} 天)
+        </small>
       `;
     }
   </script>
